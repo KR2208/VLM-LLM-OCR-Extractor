@@ -20,13 +20,13 @@ class PDFAnalyzer:
         logger.info("PDFAnalyzer initialized successfully")
     
     def run_analysis(self, pdf_path: str) -> dict:
-        """Run the complete two-step VLM analysis on a PDF.
+        """Run per-page structured extraction on a PDF.
         
         Args:
             pdf_path: Path to the PDF file
             
         Returns:
-            Dictionary mapping topics to text fragments
+            Dictionary with per-page structured data
         """
         logger.info(f"Starting PDF analysis for: {pdf_path}")
         
@@ -35,26 +35,33 @@ class PDFAnalyzer:
         images = convert_from_path(pdf_path)
         logger.info(f"PDF converted to {len(images)} pages")
         
-        # Step 1: Create document index
-        logger.info("Step 1: Creating document index...")
-        document_index = self.indexer.create_index(images)
-        logger.info(f"Index created with {len(document_index)} elements")
+        # Step 1: Extract structured data per page
+        logger.info("Extracting structured data per page...")
+        pages_data = self.indexer.extract_page_structure(images)
+        logger.info(f"Extraction complete: {len(pages_data)} pages processed")
         
-        # Optional: Save the index
-        try:
-            with open('data/output/document_index.json', 'w') as f:
-                json.dump(document_index, f, indent=2)
-            logger.info("Document index saved to data/output/document_index.json")
-        except Exception as e:
-            logger.warning(f"Could not save document index: {e}")
-        
-        # Step 2: Extract content fragments
-        logger.info("Step 2: Extracting content fragments...")
-        fragments_dict = self.indexer.extract_fragments(images, document_index)
-        logger.info("Fragmentation complete")
+        # Create output structure
+        output = {
+            "document": {
+                "total_pages": len(images),
+                "extraction_date": self._get_timestamp()
+            },
+            "pages": pages_data
+        }
         
         # Log statistics
-        total_fragments = sum(len(frags) for frags in fragments_dict.values())
-        logger.info(f"Extracted {total_fragments} total fragments across {len(fragments_dict)} topics")
+        total_tables = sum(len(p.get("tables", [])) for p in pages_data)
+        total_figures = sum(len(p.get("figures", [])) for p in pages_data)
+        total_text = sum(len(p.get("text_sections", [])) for p in pages_data)
         
-        return fragments_dict
+        logger.info(f"Extraction summary:")
+        logger.info(f"  - Tables: {total_tables}")
+        logger.info(f"  - Figures: {total_figures}")
+        logger.info(f"  - Text sections: {total_text}")
+        
+        return output
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp."""
+        from datetime import datetime
+        return datetime.now().isoformat()
