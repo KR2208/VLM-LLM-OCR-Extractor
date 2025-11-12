@@ -1,0 +1,47 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Model cache and downloaded models
+models/
+*.bin
+*.safetensors
+*.msgpack
+
+# Output files
+data/output/
+*.csv
+extracted_fragments.json
+document_index.json
+
+# Logs
+*.log
+pipeline_run.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files (keep PDFs for now but can exclude if too large)
+# data/input_pdfs/*.pdf
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
