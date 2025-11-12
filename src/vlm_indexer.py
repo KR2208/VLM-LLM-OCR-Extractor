@@ -1,6 +1,7 @@
 """VLM-based PDF indexer and fragment extractor (two-step process)."""
 
 import json
+import torch
 from typing import List, Dict, Any
 from PIL import Image
 from tqdm import tqdm
@@ -68,16 +69,14 @@ class PDFIndexer:
             
             # Create indexing prompt
             topics_str = ", ".join(EXTRACTION_TOPICS)
-            prompt = f"""Analyze the layout of this document page. Identify all major elements (text sections, tables, figures, captions) and describe what topics they contain from this list: {topics_str}.
+            prompt = f"""Analyze this document page and identify major elements (text sections, tables, figures).
 
-For each significant element, provide:
-- page_number: The page number (1-indexed)
-- element_type: 'table', 'figure', 'text_section', 'caption', etc.
-- description: Brief description of the element
-- topics: List of relevant topics from the provided list
+Identify which of these topics are present: {topics_str}
 
-Return a JSON array of objects. Example:
-[{{"page_number": 1, "element_type": "table", "description": "Table of test conditions", "topics": ["test_conditions", "sample_thickness"]}}]"""
+Return ONLY a JSON array. No markdown, no explanations. Format:
+[{{"page_number": {batch_start + 1}, "element_type": "table", "description": "Test conditions table", "topics": ["test_conditions"]}}]
+
+Your response must start with [ and end with ]"""
             
             # Process each page in the batch
             for idx, image in enumerate(batch_images):
@@ -130,7 +129,14 @@ Return a JSON array of objects. Example:
                     
                     # Parse JSON response
                     try:
-                        page_elements = json.loads(response)
+                        # Clean response - remove markdown code blocks if present
+                        response_clean = response.strip()
+                        if response_clean.startswith("```"):
+                            lines = response_clean.split("\n")
+                            response_clean = "\n".join(lines[1:-1]) if len(lines) > 2 else response_clean
+                            response_clean = response_clean.replace("```json", "").replace("```", "").strip()
+                        
+                        page_elements = json.loads(response_clean)
                         if isinstance(page_elements, list):
                             document_index.extend(page_elements)
                         else:
